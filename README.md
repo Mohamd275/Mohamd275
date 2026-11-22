@@ -76,8 +76,8 @@ CloudVisionScanner.scan(MainActivity.this, _filePath, new CloudVisionScanner.Cal
         edit_gov.setText(r.birthPlace);       // مكان الولادة
         edit_address.setText(r.registry);     // محل ورقم القيد
         // متاح كمان: r.firstName, r.lastName, r.fatherName, r.motherName
-        if (r.nationalId.isEmpty()) {
-            SketchwareUtil.showMessage(getApplicationContext(), "مقدرتش أقرا الرقم القومي، صوّر تاني");
+        if (!r.isValid()) {
+            SketchwareUtil.showMessage(getApplicationContext(), "مقدرتش أقرا البطاقة، صوّر تاني");
         }
     }
     @Override
