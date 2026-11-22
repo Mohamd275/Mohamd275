@@ -50,7 +50,7 @@ import java.util.List;
  *
  * الاستخدام (من أي Activity):
  *   IdScanActivity.start(MainActivity.this, new IdScanActivity.Listener() {
- *       public void onScanned(EgyptianIdParser.Result r) { ... }
+ *       public void onScanned(SyrianIdParser.Result r) { ... }
  *   });
  *
  * لازم تتسجل في AndroidManifest (Sketchware Pro ← AndroidManifest Manager ← Activities).
@@ -60,7 +60,7 @@ import java.util.List;
 public class IdScanActivity extends Activity implements TextureView.SurfaceTextureListener {
 
     public interface Listener {
-        void onScanned(EgyptianIdParser.Result result);
+        void onScanned(SyrianIdParser.Result result);
     }
 
     // ===== إعدادات =====
@@ -305,7 +305,7 @@ public class IdScanActivity extends Activity implements TextureView.SurfaceTextu
         bestScore = -1;
         samples = 0;
         overlay.setScanning(true);
-        overlay.setHint(hint != null ? hint : "ضع وجه البطاقة داخل الإطار بحيث يظهر الرقم القومي", false);
+        overlay.setHint(hint != null ? hint : "ضع البطاقة الشخصية داخل الإطار بحيث تظهر البيانات بوضوح", false);
         handler.removeCallbacks(sampler);
         handler.postDelayed(sampler, 600);
     }
@@ -391,8 +391,8 @@ public class IdScanActivity extends Activity implements TextureView.SurfaceTextu
                     @Override public void run() {
                         if (isFinishing()) return;
                         CloudVisionScanner.scanJpeg(IdScanActivity.this, jpeg, new CloudVisionScanner.Callback() {
-                            @Override public void onResult(EgyptianIdParser.Result r, String raw) {
-                                if (r.nationalId.length() == 14) onScanSuccess(r);
+                            @Override public void onResult(SyrianIdParser.Result r, String raw) {
+                                if (r.isValid()) onScanSuccess(r);
                                 else onScanFailed(null);
                             }
                             @Override public void onError(String msg) {
@@ -416,7 +416,7 @@ public class IdScanActivity extends Activity implements TextureView.SurfaceTextu
         }
     }
 
-    private void onScanSuccess(final EgyptianIdParser.Result r) {
+    private void onScanSuccess(final SyrianIdParser.Result r) {
         state = ST_SUCCESS;
         overlay.setSuccess();
         overlay.performHapticFeedback(HapticFeedbackConstants.LONG_PRESS);
@@ -579,7 +579,7 @@ public class IdScanActivity extends Activity implements TextureView.SurfaceTextu
             }
 
             // العنوان
-            c.drawText("مسح بطاقة الرقم القومي", getWidth() / 2f, frame.top - dp(36), title);
+            c.drawText("مسح البطاقة الشخصية", getWidth() / 2f, frame.top - dp(36), title);
 
             // التعليمات
             hintP.setColor(success ? green : hintWarn ? Color.parseColor("#FFC857") : Color.WHITE);

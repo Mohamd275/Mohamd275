@@ -1,4 +1,4 @@
-# قارئ بطاقة الرقم القومي - Sketchware Pro
+# قارئ البطاقة الشخصية السورية - Sketchware Pro
 
 تطبيق يفتح الكاميرا، يصوّر البطاقة، يقرا البيانات بـ **Google Cloud Vision**، ويحطها في EditText.
 
@@ -6,8 +6,8 @@
 |---|---|
 | `sketchware/CloudVisionScanner.java` | يرفع الصورة لـ Cloud Vision ويرجّع النتيجة (**الأساسي**) |
 | `sketchware/IdScanActivity.java` | شاشة مسح زي البنوك: كاميرا لايف + إطار + فلاش + قراءة تلقائية |
-| `sketchware/EgyptianIdParser.java` | يطلّع الرقم القومي والاسم والعنوان، ويحسب الميلاد والنوع والمحافظة |
-| `optional-offline-tesseract/IdCardScanner.java` | بديل أوفلاين (Tesseract) - **متضيفهوش** إلا لو ضفت مكتبة Tesseract |
+| `sketchware/SyrianIdParser.java` | يطلّع الرقم الوطني والاسم والنسبة واسم الأب والأم ومكان وتاريخ الولادة والقيد |
+| `optional-egypt/` | النسخة القديمة للبطاقة المصرية + Tesseract - **متضيفهمش** |
 | `server/` | Firebase Function عشان المفتاح ميبقاش جوه التطبيق (اختياري بس أأمن) |
 
 > Cloud Vision **مش محتاج أي مكتبة** في Sketchware - بيستخدم حاجات موجودة في أندرويد أصلاً. محتاج بس **Sketchware Pro** عشان ملفات الـ Java.
@@ -40,7 +40,7 @@
 ### 1) ملفات الـ Java
 `Java/Kotlin Manager` ← ضيف:
 - `CloudVisionScanner.java`
-- `EgyptianIdParser.java`
+- `SyrianIdParser.java`
 
 **غيّر السطر الأول** `package com.my.idreader;` في الملفين لاسم الباكدج بتاع مشروعك.
 وفي `CloudVisionScanner.java` حط مفتاحك:
@@ -66,15 +66,16 @@ progress.setVisibility(View.VISIBLE);
 btn_scan.setEnabled(false);
 CloudVisionScanner.scan(MainActivity.this, _filePath, new CloudVisionScanner.Callback() {
     @Override
-    public void onResult(EgyptianIdParser.Result r, String rawText) {
+    public void onResult(SyrianIdParser.Result r, String rawText) {
         progress.setVisibility(View.GONE);
         btn_scan.setEnabled(true);
-        edit_name.setText(r.fullName);
-        edit_id.setText(r.nationalId);
-        edit_birth.setText(r.birthDate);
+        edit_name.setText(r.fullName);        // الاسم + اسم الأب + النسبة
+        edit_id.setText(r.nationalId);        // الرقم الوطني (11 رقم)
+        edit_birth.setText(r.birthDate);      // dd/MM/yyyy
         edit_gender.setText(r.gender);
-        edit_gov.setText(r.governorate);
-        edit_address.setText(r.address);
+        edit_gov.setText(r.birthPlace);       // مكان الولادة
+        edit_address.setText(r.registry);     // محل ورقم القيد
+        // متاح كمان: r.firstName, r.lastName, r.fatherName, r.motherName
         if (r.nationalId.isEmpty()) {
             SketchwareUtil.showMessage(getApplicationContext(), "مقدرتش أقرا الرقم القومي، صوّر تاني");
         }
@@ -102,13 +103,14 @@ CloudVisionScanner.scan(MainActivity.this, _filePath, new CloudVisionScanner.Cal
 ```java
 IdScanActivity.start(MainActivity.this, new IdScanActivity.Listener() {
     @Override
-    public void onScanned(EgyptianIdParser.Result r) {
-        edit_name.setText(r.fullName);
-        edit_id.setText(r.nationalId);
-        edit_birth.setText(r.birthDate);
+    public void onScanned(SyrianIdParser.Result r) {
+        edit_name.setText(r.fullName);        // الاسم + اسم الأب + النسبة
+        edit_id.setText(r.nationalId);        // الرقم الوطني (11 رقم)
+        edit_birth.setText(r.birthDate);      // dd/MM/yyyy
         edit_gender.setText(r.gender);
-        edit_gov.setText(r.governorate);
-        edit_address.setText(r.address);
+        edit_gov.setText(r.birthPlace);       // مكان الولادة
+        edit_address.setText(r.registry);     // محل ورقم القيد
+        // متاح كمان: r.firstName, r.lastName, r.fatherName, r.motherName
     }
 });
 ```
@@ -141,11 +143,9 @@ IdScanActivity.start(MainActivity.this, new IdScanActivity.Listener() {
 ---
 
 ## بيطلّع إيه؟
-| الحقل | المصدر |
-|---|---|
-| الرقم القومي | Cloud Vision |
-| تاريخ الميلاد، النوع، المحافظة | **محسوبة من الرقم القومي** |
-| الاسم والعنوان | Cloud Vision (أول سطرين بعد عنوان البطاقة = الاسم، اللي بعدهم = العنوان) |
+بيدوّر على كل حقل **باسمه** على البطاقة (الاسم، النسبة/الكنية، اسم الأب، اسم الأم، مكان وتاريخ الولادة، القيد، الجنس، الرقم الوطني)،
+فبيشتغل حتى لو ترتيب السطور اختلف، أو لو الحقل في سطر وقيمته في السطر اللي بعده.
+لو عدد خانات الرقم الوطني مختلف، غيّر `NATIONAL_ID_LENGTH` في `SyrianIdParser.java`.
 
 ## التكلفة
 أول 1000 صورة/شهر ببلاش، بعدها 1.5$ لكل 1000 صورة. (https://cloud.google.com/vision/pricing)

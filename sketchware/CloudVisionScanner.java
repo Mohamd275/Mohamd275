@@ -37,7 +37,7 @@ public class CloudVisionScanner {
     // =====================
 
     public interface Callback {
-        void onResult(EgyptianIdParser.Result result, String rawText);
+        void onResult(SyrianIdParser.Result result, String rawText);
         void onError(String message);
     }
 
@@ -61,7 +61,7 @@ public class CloudVisionScanner {
                     final String text = (PROXY_URL == null || PROXY_URL.trim().isEmpty())
                             ? callVisionDirect(activity, b64)
                             : callProxy(b64);
-                    final EgyptianIdParser.Result res = EgyptianIdParser.parse(text);
+                    final SyrianIdParser.Result res = SyrianIdParser.parse(text);
                     activity.runOnUiThread(new Runnable() {
                         @Override public void run() { cb.onResult(res, text); }
                     });

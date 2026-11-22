@@ -20,7 +20,7 @@
                 android:id="@+id/txt_title"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:text="قراءة بطاقة الرقم القومي"
+                android:text="قراءة البطاقة الشخصية"
                 android:textSize="20sp"
                 android:textStyle="bold"
                 android:textColor="#1A237E"
@@ -73,10 +73,10 @@
                 android:id="@+id/edit_id"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:hint="14 رقم"
+                android:hint="11 رقم"
                 android:gravity="right"
                 android:inputType="number"
-                android:maxLength="14"
+                android:maxLength="11"
                 android:background="#FFFFFF"
                 android:padding="12dp" />
 
@@ -91,7 +91,7 @@
                 android:id="@+id/edit_birth"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:hint="yyyy/MM/dd"
+                android:hint="dd/MM/yyyy"
                 android:gravity="right"
                 android:inputType="text"
                 android:background="#FFFFFF"
@@ -117,7 +117,7 @@
             <TextView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:text="المحافظة"
+                android:text="مكان الولادة"
                 android:textColor="#555555"
                 android:gravity="right"
                 android:layout_marginTop="12dp" />
@@ -125,7 +125,7 @@
                 android:id="@+id/edit_gov"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:hint="محافظة الميلاد"
+                android:hint="مكان الولادة"
                 android:gravity="right"
                 android:inputType="text"
                 android:background="#FFFFFF"
@@ -134,7 +134,7 @@
             <TextView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:text="العنوان"
+                android:text="محل ورقم القيد"
                 android:textColor="#555555"
                 android:gravity="right"
                 android:layout_marginTop="12dp" />
@@ -142,7 +142,7 @@
                 android:id="@+id/edit_address"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:hint="العنوان"
+                android:hint="القيد"
                 android:gravity="right"
                 android:inputType="textMultiLine"
                 android:minLines="2"
