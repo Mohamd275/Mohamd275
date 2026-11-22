@@ -6,7 +6,7 @@
 |---|---|
 | `sketchware/CloudVisionScanner.java` | يرفع الصورة لـ Cloud Vision ويرجّع النتيجة (**الأساسي**) |
 | `sketchware/EgyptianIdParser.java` | يطلّع الرقم القومي والاسم والعنوان، ويحسب الميلاد والنوع والمحافظة |
-| `sketchware/IdCardScanner.java` | بديل أوفلاين ببلاش (Tesseract) - اختياري |
+| `optional-offline-tesseract/IdCardScanner.java` | بديل أوفلاين (Tesseract) - **متضيفهوش** إلا لو ضفت مكتبة Tesseract |
 | `server/` | Firebase Function عشان المفتاح ميبقاش جوه التطبيق (اختياري بس أأمن) |
 
 > Cloud Vision **مش محتاج أي مكتبة** في Sketchware - بيستخدم حاجات موجودة في أندرويد أصلاً. محتاج بس **Sketchware Pro** عشان ملفات الـ Java.
