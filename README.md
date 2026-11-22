@@ -5,6 +5,7 @@
 | الملف | الوظيفة |
 |---|---|
 | `sketchware/CloudVisionScanner.java` | يرفع الصورة لـ Cloud Vision ويرجّع النتيجة (**الأساسي**) |
+| `sketchware/IdScanActivity.java` | شاشة مسح زي البنوك: كاميرا لايف + إطار + فلاش + قراءة تلقائية |
 | `sketchware/EgyptianIdParser.java` | يطلّع الرقم القومي والاسم والعنوان، ويحسب الميلاد والنوع والمحافظة |
 | `optional-offline-tesseract/IdCardScanner.java` | بديل أوفلاين (Tesseract) - **متضيفهوش** إلا لو ضفت مكتبة Tesseract |
 | `server/` | Firebase Function عشان المفتاح ميبقاش جوه التطبيق (اختياري بس أأمن) |
@@ -87,6 +88,32 @@ CloudVisionScanner.scan(MainActivity.this, _filePath, new CloudVisionScanner.Cal
 });
 ```
 (لو اسم المتغير في الحدث مش `_filePath` استخدم الاسم اللي ظاهر عندك.)
+
+---
+
+## شاشة المسح زي البنوك (IdScanActivity) ⭐
+
+بدل الـ Camera component، الشاشة دي بتفتح كاميرا لايف وإطار للبطاقة، وبتختار أوضح فريم وتقرا لوحدها.
+
+1. ضيف `IdScanActivity.java` في **Java/Kotlin Manager** (وغيّر سطر `package`).
+2. **⋮ ← AndroidManifest Manager ← Activities ← +** واكتب: `IdScanActivity`
+3. امسح بلوك `cam takePicture` وحدث `onPictureTaken` (والـ Camera component لو عايز).
+4. **btn_scan → onClick** ← `add source directly`:
+```java
+IdScanActivity.start(MainActivity.this, new IdScanActivity.Listener() {
+    @Override
+    public void onScanned(EgyptianIdParser.Result r) {
+        edit_name.setText(r.fullName);
+        edit_id.setText(r.nationalId);
+        edit_birth.setText(r.birthDate);
+        edit_gender.setText(r.gender);
+        edit_gov.setText(r.governorate);
+        edit_address.setText(r.address);
+    }
+});
+```
+> كل محاولة قراءة = طلب واحد لـ Cloud Vision. الشاشة بتعمل 6 محاولات تلقائي بالكتير، وبعدها بتستنى المستخدم يدوس على الشاشة.
+> تقدر تغيّر الرقم من `MAX_AUTO_TRIES` في أول الملف.
 
 ---
 

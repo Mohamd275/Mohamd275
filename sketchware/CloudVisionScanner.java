@@ -41,11 +41,23 @@ public class CloudVisionScanner {
         void onError(String message);
     }
 
+    /** من مسار صورة (Camera component). */
     public static void scan(final Activity activity, final String imagePath, final Callback cb) {
+        run(activity, imagePath, null, cb);
+    }
+
+    /** من صورة JPEG جاهزة في الذاكرة (شاشة المسح IdScanActivity). */
+    public static void scanJpeg(final Activity activity, final byte[] jpeg, final Callback cb) {
+        run(activity, null, jpeg, cb);
+    }
+
+    private static void run(final Activity activity, final String imagePath, final byte[] jpeg, final Callback cb) {
         new Thread(new Runnable() {
             @Override public void run() {
                 try {
-                    String b64 = encodeImage(imagePath);
+                    String b64 = jpeg != null
+                            ? Base64.encodeToString(jpeg, Base64.NO_WRAP)
+                            : encodeImage(imagePath);
                     final String text = (PROXY_URL == null || PROXY_URL.trim().isEmpty())
                             ? callVisionDirect(activity, b64)
                             : callProxy(b64);
