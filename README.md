@@ -50,7 +50,7 @@ public static String API_KEY = "AIza....";
 
 ### 2) التصميم (main.xml)
 - `Button` id: `btn_scan` ← "صوّر البطاقة"
-- `EditText`: `edit_name` ، `edit_id` ، `edit_birth` ، `edit_gender` ، `edit_gov` ، `edit_address`
+- `EditText`: `edit_name` ، `edit_father` ، `edit_last` ، `edit_mother` ، `edit_id` ، `edit_birth` (أو استورد `sketchware/main.xml`)
 - `ProgressBar` id: `progress` (Visibility = GONE)
 
 ### 3) المكونات والصلاحيات
@@ -69,13 +69,13 @@ CloudVisionScanner.scan(MainActivity.this, _filePath, new CloudVisionScanner.Cal
     public void onResult(SyrianIdParser.Result r, String rawText) {
         progress.setVisibility(View.GONE);
         btn_scan.setEnabled(true);
-        edit_name.setText(r.fullName);        // الاسم + اسم الأب + النسبة
-        edit_id.setText(r.nationalId);        // الرقم الوطني (11 رقم)
-        edit_birth.setText(r.birthDate);      // dd/MM/yyyy
-        edit_gender.setText(r.gender);
-        edit_gov.setText(r.birthPlace);       // مكان الولادة
-        edit_address.setText(r.registry);     // محل ورقم القيد
-        // متاح كمان: r.firstName, r.lastName, r.fatherName, r.motherName
+        edit_name.setText(r.firstName);       // الاسم
+        edit_father.setText(r.fatherName);    // اسم الأب
+        edit_last.setText(r.lastName);        // النسبة
+        edit_mother.setText(r.motherName);    // اسم الأم ونسبتها
+        edit_id.setText(r.nationalId);        // الرقم الوطني
+        edit_birth.setText(r.birthDate);      // تاريخ الولادة dd/MM/yyyy
+        // متاح كمان: r.fullName, r.birthPlace
         if (!r.isValid()) {
             SketchwareUtil.showMessage(getApplicationContext(), "مقدرتش أقرا البطاقة، صوّر تاني");
         }
@@ -104,13 +104,13 @@ CloudVisionScanner.scan(MainActivity.this, _filePath, new CloudVisionScanner.Cal
 IdScanActivity.start(MainActivity.this, new IdScanActivity.Listener() {
     @Override
     public void onScanned(SyrianIdParser.Result r) {
-        edit_name.setText(r.fullName);        // الاسم + اسم الأب + النسبة
-        edit_id.setText(r.nationalId);        // الرقم الوطني (11 رقم)
-        edit_birth.setText(r.birthDate);      // dd/MM/yyyy
-        edit_gender.setText(r.gender);
-        edit_gov.setText(r.birthPlace);       // مكان الولادة
-        edit_address.setText(r.registry);     // محل ورقم القيد
-        // متاح كمان: r.firstName, r.lastName, r.fatherName, r.motherName
+        edit_name.setText(r.firstName);       // الاسم
+        edit_father.setText(r.fatherName);    // اسم الأب
+        edit_last.setText(r.lastName);        // النسبة
+        edit_mother.setText(r.motherName);    // اسم الأم ونسبتها
+        edit_id.setText(r.nationalId);        // الرقم الوطني
+        edit_birth.setText(r.birthDate);      // تاريخ الولادة dd/MM/yyyy
+        // متاح كمان: r.fullName, r.birthPlace
     }
 });
 ```

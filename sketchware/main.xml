@@ -31,19 +31,11 @@
                 android:id="@+id/btn_scan"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:text="📷 صوّر البطاقة"
+                android:text="📷 امسح البطاقة"
                 android:textSize="16sp"
                 android:textColor="#FFFFFF"
                 android:background="#1A73E8"
                 android:padding="12dp" />
-
-            <ProgressBar
-                android:id="@+id/progress"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_gravity="center_horizontal"
-                android:layout_marginTop="12dp"
-                android:visibility="gone" />
 
             <TextView
                 android:layout_width="match_parent"
@@ -56,7 +48,7 @@
                 android:id="@+id/edit_name"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:hint="الاسم بالكامل"
+                android:hint="الاسم"
                 android:gravity="right"
                 android:inputType="textPersonName"
                 android:background="#FFFFFF"
@@ -65,7 +57,58 @@
             <TextView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:text="الرقم القومي"
+                android:text="اسم الأب"
+                android:textColor="#555555"
+                android:gravity="right"
+                android:layout_marginTop="12dp" />
+            <EditText
+                android:id="@+id/edit_father"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:hint="اسم الأب"
+                android:gravity="right"
+                android:inputType="textPersonName"
+                android:background="#FFFFFF"
+                android:padding="12dp" />
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="النسبة"
+                android:textColor="#555555"
+                android:gravity="right"
+                android:layout_marginTop="12dp" />
+            <EditText
+                android:id="@+id/edit_last"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:hint="النسبة"
+                android:gravity="right"
+                android:inputType="textPersonName"
+                android:background="#FFFFFF"
+                android:padding="12dp" />
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="اسم الأم ونسبتها"
+                android:textColor="#555555"
+                android:gravity="right"
+                android:layout_marginTop="12dp" />
+            <EditText
+                android:id="@+id/edit_mother"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:hint="اسم ونسبة الأم"
+                android:gravity="right"
+                android:inputType="textPersonName"
+                android:background="#FFFFFF"
+                android:padding="12dp" />
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="الرقم الوطني"
                 android:textColor="#555555"
                 android:gravity="right"
                 android:layout_marginTop="12dp" />
@@ -83,7 +126,7 @@
             <TextView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:text="تاريخ الميلاد"
+                android:text="تاريخ الولادة"
                 android:textColor="#555555"
                 android:gravity="right"
                 android:layout_marginTop="12dp" />
@@ -94,58 +137,6 @@
                 android:hint="dd/MM/yyyy"
                 android:gravity="right"
                 android:inputType="text"
-                android:background="#FFFFFF"
-                android:padding="12dp" />
-
-            <TextView
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:text="النوع"
-                android:textColor="#555555"
-                android:gravity="right"
-                android:layout_marginTop="12dp" />
-            <EditText
-                android:id="@+id/edit_gender"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:hint="ذكر / أنثى"
-                android:gravity="right"
-                android:inputType="text"
-                android:background="#FFFFFF"
-                android:padding="12dp" />
-
-            <TextView
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:text="مكان الولادة"
-                android:textColor="#555555"
-                android:gravity="right"
-                android:layout_marginTop="12dp" />
-            <EditText
-                android:id="@+id/edit_gov"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:hint="مكان الولادة"
-                android:gravity="right"
-                android:inputType="text"
-                android:background="#FFFFFF"
-                android:padding="12dp" />
-
-            <TextView
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:text="محل ورقم القيد"
-                android:textColor="#555555"
-                android:gravity="right"
-                android:layout_marginTop="12dp" />
-            <EditText
-                android:id="@+id/edit_address"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:hint="القيد"
-                android:gravity="right"
-                android:inputType="textMultiLine"
-                android:minLines="2"
                 android:background="#FFFFFF"
                 android:padding="12dp" />
 

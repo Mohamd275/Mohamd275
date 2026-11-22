@@ -21,7 +21,7 @@ public class SyrianIdParser {
         public String firstName = "";
         public String lastName = "";     // النسبة / الكنية
         public String fatherName = "";
-        public String motherName = "";
+        public String motherName = "";   // اسم الأم ونسبتها
         public String birthPlace = "";
         public String birthDate = "";    // dd/MM/yyyy
         public String registry = "";     // محل ورقم القيد
@@ -37,16 +37,16 @@ public class SyrianIdParser {
 
     // الأسماء مكتوبة بعد التطبيع (أ/إ/آ ← ا). الأطول الأول عشان ميتلخبطش.
     private static final String[] L_NATIONAL = {"الرقم الوطني", "الرقم الوطنى", "رقم وطني"};
-    private static final String[] L_BIRTH = {"مكان وتاريخ الولادة", "محل وتاريخ الولادة", "مكان وتاريخ الميلاد",
+    private static final String[] L_BIRTH = {"محل و تاريخ الولادة", "مكان و تاريخ الولادة", "مكان وتاريخ الولادة", "محل وتاريخ الولادة", "مكان وتاريخ الميلاد",
             "محل الولادة", "مكان الولادة", "تاريخ الولادة", "تاريخ الميلاد", "الولادة"};
     private static final String[] L_FATHER = {"اسم الاب", "الاب"};
-    private static final String[] L_MOTHER = {"اسم الام", "الام"};
+    private static final String[] L_MOTHER = {"اسم و نسبة الام", "اسم ونسبة الام", "اسم الام ونسبتها", "اسم الام و نسبتها", "اسم الام", "الام"};
     private static final String[] L_LAST = {"النسبة", "الكنية", "الشهرة", "اللقب", "النسبه"};
     private static final String[] L_FIRST = {"الاسم"};
-    private static final String[] L_REGISTRY = {"محل القيد", "مكان القيد", "القيد", "الخانة"};
+    private static final String[] L_REGISTRY = {"محل القيد", "مكان القيد", "القيد", "الخانة", "الامانة"};
     private static final String[] L_GENDER = {"الجنس"};
-    private static final String[] L_OTHER = {"الجمهورية", "العربية السورية", "وزارة الداخلية", "البطاقة الشخصية",
-            "تاريخ المنح", "العلامات الفارقة", "الشؤون المدنية", "امين السجل", "توقيع"};
+    private static final String[] L_OTHER = {"الجمهورية", "العربية السورية", "وزارة الداخلية", "البطاقة الشخصية", "بطاقة شخصية",
+            "تاريخ المنح", "العلامات الفارقة", "العلامات المميزة", "لون العينين", "لون الوجه", "العنوان", "الشؤون المدنية", "امين السجل", "توقيع"};
 
     private static final Pattern DATE_DMY = Pattern.compile("(\\d{1,2})\\s*[/\\-.]\\s*(\\d{1,2})\\s*[/\\-.]\\s*((?:19|20)\\d{2})");
     private static final Pattern DATE_YMD = Pattern.compile("((?:19|20)\\d{2})\\s*[/\\-.]\\s*(\\d{1,2})\\s*[/\\-.]\\s*(\\d{1,2})");
@@ -61,17 +61,41 @@ public class SyrianIdParser {
         return sb.toString();
     }
 
-    /** تطبيع للمقارنة بس، وبيحافظ على طول النص عشان المواقع تفضل زي ما هي. */
-    private static String normForMatch(String s) {
-        StringBuilder sb = new StringBuilder(s.length());
-        for (char c : s.toCharArray()) {
-            if (c == 'أ' || c == 'إ' || c == 'آ' || c == 'ٱ') sb.append('ا');
-            else if (c == 'ى') sb.append('ي');
-            else if (c == 'ـ' || (c >= 'ً' && c <= 'ْ')) sb.append(' ');
-            else sb.append(c);
-        }
-        return sb.toString();
+    /** نص مطبّع للمقارنة + خريطة ترجّع كل حرف لمكانه في النص الأصلي. */
+    private static class Norm {
+        final String text;
+        final int[] map; // map[i] = مكان الحرف i في الأصل، map[length] = طول الأصل
+        Norm(String text, int[] map) { this.text = text; this.map = map; }
+        int origIndex(int i) { return map[Math.min(i, text.length())]; }
     }
+
+    /** يشيل التطويل (ـ) والتشكيل، يوحّد الهمزات، ويخلي المسافات مسافة واحدة. */
+    private static Norm norm(String s) {
+        StringBuilder sb = new StringBuilder(s.length());
+        int[] map = new int[s.length() + 1];
+        boolean lastSpace = false;
+        for (int i = 0; i < s.length(); i++) {
+            char c = s.charAt(i);
+            if (c == '\u0640' || (c >= '\u064B' && c <= '\u0652') || c == '\u0670') continue; // تطويل وتشكيل
+            if (c == 'أ' || c == 'إ' || c == 'آ' || c == 'ٱ') c = 'ا';
+            else if (c == 'ى') c = 'ي';
+            if (Character.isWhitespace(c)) {
+                if (lastSpace) continue;
+                c = ' ';
+                lastSpace = true;
+            } else {
+                lastSpace = false;
+            }
+            map[sb.length()] = i;
+            sb.append(c);
+        }
+        map[sb.length()] = s.length();
+        int[] m = new int[sb.length() + 1];
+        System.arraycopy(map, 0, m, 0, sb.length() + 1);
+        return new Norm(sb.toString(), m);
+    }
+
+    private static String normForMatch(String s) { return norm(s).text; }
 
     private static boolean isArabicLetter(char c) {
         return c >= 'ء' && c <= 'ي';
@@ -108,17 +132,18 @@ public class SyrianIdParser {
     }
 
     /** يجيب قيمة الحقل: من نفس السطر بعد اسم الحقل، أو من السطر اللي بعده. */
-    private static String valueOf(List<String> lines, List<String> norms, String[] labels) {
+    private static String valueOf(List<String> lines, List<Norm> norms, String[] labels) {
         for (int i = 0; i < lines.size(); i++) {
-            int end = findLabel(norms.get(i), labels);
+            Norm n = norms.get(i);
+            int end = findLabel(n.text, labels);
             if (end < 0) continue;
-            String v = cleanValue(lines.get(i).substring(end));
+            String v = cleanValue(lines.get(i).substring(n.origIndex(end)));
             // لو في نفس السطر حقل تاني بعده، خد اللي قبله بس
-            String nv = normForMatch(v);
-            int cut = firstOtherLabelStart(nv);
-            if (cut >= 0) v = cleanValue(v.substring(0, cut));
+            Norm nv = norm(v);
+            int cut = firstOtherLabelStart(nv.text);
+            if (cut >= 0) v = cleanValue(v.substring(0, nv.origIndex(cut)));
             if (!v.isEmpty()) return v;
-            if (i + 1 < lines.size() && !hasAnyLabel(norms.get(i + 1))) {
+            if (i + 1 < lines.size() && !hasAnyLabel(norms.get(i + 1).text)) {
                 return cleanValue(lines.get(i + 1));
             }
         }
@@ -152,12 +177,12 @@ public class SyrianIdParser {
         String text = normalizeDigits(rawText);
 
         List<String> lines = new ArrayList<>();
-        List<String> norms = new ArrayList<>();
+        List<Norm> norms = new ArrayList<>();
         for (String line : text.split("\\r?\\n")) {
             String t = line.trim();
             if (t.isEmpty()) continue;
             lines.add(t);
-            norms.add(normForMatch(t));
+            norms.add(norm(t));
         }
 
         // 1) الرقم القومي/الوطني
@@ -174,7 +199,7 @@ public class SyrianIdParser {
         r.firstName = onlyLetters(valueOf(lines, norms, L_FIRST));
         r.lastName = onlyLetters(valueOf(lines, norms, L_LAST));
         r.fatherName = onlyLetters(valueOf(lines, norms, L_FATHER));
-        r.motherName = onlyLetters(valueOf(lines, norms, L_MOTHER));
+        r.motherName = onlyLetters(valueOf(lines, norms, L_MOTHER));   // اسم الأم ونسبتها
 
         StringBuilder full = new StringBuilder(r.firstName);
         if (!r.fatherName.isEmpty()) full.append(full.length() > 0 ? " " : "").append(r.fatherName);
