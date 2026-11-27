@@ -4,6 +4,30 @@
 
 | الملف | الوظيفة |
 |---|---|
+| `sketchware/IdScanActivity.java` | شاشة مسح زي البنوك: كاميرا لايف + إطار + فلاش + قراءة تلقائية |
+| `sketchware/OfflineIdReader.java` | ⭐ القراءة الأوفلاين (Tesseract للأسماء + قارئ أرقام مخصوص) |
+| `sketchware/DigitReader.java` | قارئ الأرقام العربية: الرقم الوطني الأحمر وتاريخ الولادة |
+| `sketchware/FieldVoter.java` | بيقرا كذا فريم ويختار القيمة اللي اتكررت (دقة أعلى) |
+| `sketchware/SyrianIdParser.java` | بيطلّع الحقول من النص |
+| `sketchware/CloudVisionScanner.java` | قراءة بـ Google Cloud (اختياري - بس لازم يكون موجود في المشروع) |
+| `assets/tessdata/ara.traineddata` | ملف اللغة العربي لـ Tesseract (tessdata_fast، رخصة Apache 2.0) |
+| `optional-egypt/` | النسخة القديمة للبطاقة المصرية - **متضيفهمش** |
+
+## ⭐ النسخة الأوفلاين (الافتراضية) - ببلاش ومن غير نت
+
+1. **المكتبة:** `Library Manager` ← `Local libraries` ← Download:
+   ```
+   cz.adaptech.tesseract4android:tesseract4android:4.7.0
+   ```
+   وفعّلها للمشروع.
+2. **ملف اللغة:** نزّل `assets/tessdata/ara.traineddata` من الريبو ده، وفي `Asset Manager` اعمل فولدر `tessdata` وحطه جواه.
+3. **ملفات الـ Java (6):** `IdScanActivity` ، `OfflineIdReader` ، `DigitReader` ، `FieldVoter` ، `SyrianIdParser` ، `CloudVisionScanner`
+   (غيّر سطر `package` في كل واحد لو الباكدج مختلف).
+4. `IdScanActivity` متسجلة في AndroidManifest، وكود الزرار زي ما هو.
+
+> للتبديل لـ Google Cloud: في أول `IdScanActivity.java` خلي `USE_OFFLINE = false`.
+
+---|---|
 | `sketchware/CloudVisionScanner.java` | يرفع الصورة لـ Cloud Vision ويرجّع النتيجة (**الأساسي**) |
 | `sketchware/IdScanActivity.java` | شاشة مسح زي البنوك: كاميرا لايف + إطار + فلاش + قراءة تلقائية |
 | `sketchware/SyrianIdParser.java` | يطلّع الرقم الوطني والاسم والنسبة واسم الأب والأم ومكان وتاريخ الولادة والقيد |

@@ -125,8 +125,8 @@ public class SyrianIdParser {
     }
 
     private static String cleanValue(String v) {
-        return v.replaceAll("^[\\s:：\\-–_./|]+", "")
-                .replaceAll("[\\s:：\\-–_|]+$", "")
+        return v.replaceAll("^[\\s:：؛،;,\\-–_./|«»\"']+", "")
+                .replaceAll("[\\s:：؛،;,\\-–_|«»\"']+$", "")
                 .replaceAll("\\s+", " ")
                 .trim();
     }
@@ -222,6 +222,93 @@ public class SyrianIdParser {
         return r;
     }
 
+    /**
+     * قراءة متسامحة لنص Tesseract من منطقة الحقول (لما أسماء الحقول تتقري غلط زي "لنسية" أو "الوالادة").
+     * كل سطر فيه ":" ← اللي قبلها اسم الحقل واللي بعدها القيمة.
+     * الحقل بيتعرف بأجزاء من اسمه، ولو مش واضح بيتحط حسب ترتيب السطور في البطاقة:
+     * الاسم ← النسبة ← اسم الأب ← اسم ونسبة الأم ← محل وتاريخ الولادة.
+     */
+    public static Result parseLoose(String rawText) {
+        Result r = new Result();
+        if (rawText == null) return r;
+        String text = normalizeDigits(rawText);
+        String[] slots = new String[5]; // 0 اسم، 1 نسبة، 2 أب، 3 أم، 4 ولادة
+        int lastSlot = -1;
+        for (String line : text.split("\\r?\\n")) {
+            int colon = -1;
+            for (int i = 0; i < line.length(); i++) {
+                char c = line.charAt(i);
+                if (c == ':' || c == '\uFF1A' || c == '\u061B') { colon = i; break; }
+            }
+            String label, value;
+            if (colon >= 0) {
+                label = normForMatch(line.substring(0, colon)).replace(" ", "");
+                value = line.substring(colon + 1);
+            } else {
+                // ساعات الـ ":" بتضيع: أول كلمة = اسم الحقل، والباقي = القيمة
+                String t = line.trim();
+                int sp = t.indexOf(' ');
+                if (sp < 0 || onlyLetters(t).isEmpty() || isHeaderLine(t)) continue;
+                label = normForMatch(t.substring(0, sp));
+                value = t.substring(sp + 1);
+                if (onlyLetters(value).isEmpty()) continue;
+            }
+            if (isHeaderLine(line)) continue;
+            int slot = guessSlot(label);
+            if (slot < 0 || slots[slot] != null) {
+                slot = -1;
+                for (int k = lastSlot + 1; k < 5; k++) if (slots[k] == null) { slot = k; break; }
+            }
+            if (slot < 0) continue;
+            slots[slot] = value;
+            lastSlot = slot;
+        }
+        if (slots[0] != null) r.firstName = onlyLetters(slots[0]);
+        if (slots[1] != null) r.lastName = onlyLetters(slots[1]);
+        if (slots[2] != null) r.fatherName = onlyLetters(slots[2]);
+        if (slots[3] != null) r.motherName = onlyLetters(slots[3]);
+        if (slots[4] != null) {
+            r.birthPlace = onlyLetters(slots[4]).replaceAll("(^|\\s)\\S(?=\\s|$)", " ").replaceAll("\\s+", " ").trim();
+            r.birthDate = findDate(fixDigitConfusions(slots[4]));
+        }
+        StringBuilder full = new StringBuilder(r.firstName);
+        if (!r.fatherName.isEmpty()) full.append(full.length() > 0 ? " " : "").append(r.fatherName);
+        if (!r.lastName.isEmpty()) full.append(full.length() > 0 ? " " : "").append(r.lastName);
+        r.fullName = full.toString();
+        return r;
+    }
+
+    private static boolean isHeaderLine(String line) {
+        return findLabel(norm(line).text, L_OTHER) >= 0;
+    }
+
+    private static int guessSlot(String l) {
+        if (l.contains("الام") || l.contains("لام") && l.contains("نس")) return 3;
+        if (l.contains("الاب") || l.endsWith("لاب")) return 2;
+        if (l.contains("تاريخ") || l.contains("ولاد") || l.contains("والاد") || l.contains("لادة") || l.contains("لاده")) return 4;
+        if (l.contains("نسب") || l.contains("نسي") || l.contains("نسس") || l.contains("كنية") || l.contains("شهرة")) return 1;
+        if (l.contains("سم") || l.contains("اسم")) return 0;
+        return -1;
+    }
+
+    /** Tesseract بيقرا بعض الأرقام العربية كحروف (٥←ه، ٩←و). نصلّحها جوه مجموعات الأرقام. */
+    static String fixDigitConfusions(String s) {
+        StringBuilder sb = new StringBuilder(s);
+        for (int i = 0; i < sb.length(); i++) {
+            char c = sb.charAt(i);
+            boolean nearDigit = (i > 0 && isDigitLike(sb.charAt(i - 1))) || (i + 1 < sb.length() && isDigitLike(sb.charAt(i + 1)));
+            if (!nearDigit) continue;
+            if (c == 'ه') sb.setCharAt(i, '5');
+            else if (c == 'و') sb.setCharAt(i, '9');
+            else if (c == 'ا') sb.setCharAt(i, '1');
+        }
+        return sb.toString();
+    }
+
+    private static boolean isDigitLike(char c) {
+        return (c >= '0' && c <= '9') || c == '-' || c == '/' || c == 'ه' || c == 'و';
+    }
+
     private static String findDate(String s) {
         Matcher m = DATE_DMY.matcher(s);
         if (m.find()) return fmt(m.group(1), m.group(2), m.group(3));
@@ -232,7 +319,8 @@ public class SyrianIdParser {
 
     private static String fmt(String d, String mo, String y) {
         int dd = Integer.parseInt(d), mm = Integer.parseInt(mo);
-        if (dd < 1 || dd > 31 || mm < 1 || mm > 12) return "";
+        int yy = Integer.parseInt(y);
+        if (dd < 1 || dd > 31 || mm < 1 || mm > 12 || yy < 1900 || yy > 2035) return "";
         return String.format("%02d/%02d/%s", dd, mm, y);
     }
 }

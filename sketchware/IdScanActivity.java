@@ -64,6 +64,10 @@ public class IdScanActivity extends Activity implements TextureView.SurfaceTextu
     }
 
     // ===== إعدادات =====
+    /** true = قراءة أوفلاين (Tesseract، ببلاش ومن غير نت) | false = Google Cloud Vision */
+    public static boolean USE_OFFLINE = true;
+    private static final int MAX_OFFLINE_FRAMES = 8;      // أوفلاين: أقصى عدد فريمات نقراها ونصوّت بينها
+    private static final int OFFLINE_SAMPLES_PER_TRY = 3; // أوفلاين: نختار الأوضح من 3 فريمات
     private static final float CARD_RATIO = 85.6f / 54f;  // مقاس البطاقة القياسي
     private static final int SAMPLE_INTERVAL_MS = 250;    // كل قد إيه نفحص فريم
     private static final int SAMPLES_PER_TRY = 6;         // نختار الأوضح من 6 فريمات (~1.5 ثانية)
@@ -95,6 +99,11 @@ public class IdScanActivity extends Activity implements TextureView.SurfaceTextu
     private int bestBrightness;
     private int samples;
     private int tries;
+
+    private OfflineIdReader reader;
+    private FieldVoter voter = new FieldVoter();
+    private final java.util.concurrent.ExecutorService ocrExec =
+            java.util.concurrent.Executors.newSingleThreadExecutor();
 
     // ---------------------------------------------------------------- lifecycle
 
@@ -175,6 +184,10 @@ public class IdScanActivity extends Activity implements TextureView.SurfaceTextu
     protected void onDestroy() {
         super.onDestroy();
         if (isFinishing()) sListener = null;
+        ocrExec.execute(new Runnable() {
+            @Override public void run() { if (reader != null) reader.release(); }
+        });
+        ocrExec.shutdown();
     }
 
     // ---------------------------------------------------------------- camera
@@ -293,6 +306,7 @@ public class IdScanActivity extends Activity implements TextureView.SurfaceTextu
         }
         if (state == ST_PAUSED) {
             tries = 0;
+            voter = new FieldVoter();
             startSearching(null);
         }
     }
@@ -355,7 +369,7 @@ public class IdScanActivity extends Activity implements TextureView.SurfaceTextu
             }
         }
         samples++;
-        if (samples < SAMPLES_PER_TRY) {
+        if (samples < (USE_OFFLINE ? OFFLINE_SAMPLES_PER_TRY : SAMPLES_PER_TRY)) {
             handler.postDelayed(sampler, SAMPLE_INTERVAL_MS);
             return;
         }
@@ -367,6 +381,10 @@ public class IdScanActivity extends Activity implements TextureView.SurfaceTextu
     }
 
     private void sendBestFrame() {
+        if (USE_OFFLINE) {
+            readOffline();
+            return;
+        }
         state = ST_PROCESSING;
         tries++;
         overlay.setScanning(false);
@@ -404,6 +422,69 @@ public class IdScanActivity extends Activity implements TextureView.SurfaceTextu
                 });
             }
         }).start();
+    }
+
+    // ---------------------------------------------------------------- offline
+
+    private void readOffline() {
+        state = ST_PROCESSING;
+        overlay.setScanning(false);
+        overlay.setHint(voter.frames() == 0 ? "جاري قراءة البيانات..."
+                : "بنتأكد من البيانات... (" + (voter.frames() + 1) + "/" + MAX_OFFLINE_FRAMES + ")", false);
+        final byte[] frame = bestFrame;
+        final Rect crop = frameRectInSensor(0.02f);
+        final int fw = pw, fh = ph, rot = camRotation;
+        bestFrame = null;
+
+        ocrExec.execute(new Runnable() {
+            @Override public void run() {
+                try {
+                    if (reader == null) reader = new OfflineIdReader(IdScanActivity.this);
+                    Bitmap card = cropRotateBitmap(frame, fw, fh, crop, rot);
+                    final SyrianIdParser.Result r = reader.read(card);
+                    card.recycle();
+                    runOnUiThread(new Runnable() {
+                        @Override public void run() { onOfflineResult(r); }
+                    });
+                } catch (final Throwable e) {
+                    runOnUiThread(new Runnable() {
+                        @Override public void run() {
+                            if (isFinishing()) return;
+                            state = ST_PAUSED;
+                            overlay.setHint("خطأ: " + e.getMessage() + "\nاضغط على الشاشة للمحاولة تاني", true);
+                        }
+                    });
+                }
+            }
+        });
+    }
+
+    private void onOfflineResult(SyrianIdParser.Result r) {
+        if (isFinishing() || state != ST_PROCESSING) return;
+        voter.add(r);
+        if (voter.isConfident()) {
+            onScanSuccess(voter.best());
+            return;
+        }
+        if (voter.frames() >= MAX_OFFLINE_FRAMES) {
+            SyrianIdParser.Result best = voter.best();
+            if (best.isValid()) {
+                onScanSuccess(best);
+            } else {
+                state = ST_PAUSED;
+                voter = new FieldVoter();
+                overlay.setHint("مقدرتش أقرا البطاقة\nخلي وش البطاقة مالي الإطار، من غير انعكاس، واضغط على الشاشة", true);
+            }
+            return;
+        }
+        startSearching(countAny(r) == 0
+                ? "خلي وش البطاقة مالي الإطار وثبّت الموبايل"
+                : "ثبّت الموبايل... بنتأكد من البيانات");
+    }
+
+    private static int countAny(SyrianIdParser.Result r) {
+        return (r.nationalId.isEmpty() ? 0 : 1) + (r.firstName.isEmpty() ? 0 : 1)
+                + (r.fatherName.isEmpty() ? 0 : 1) + (r.lastName.isEmpty() ? 0 : 1);
     }
 
     private void onScanFailed(String reason) {
@@ -466,6 +547,19 @@ public class IdScanActivity extends Activity implements TextureView.SurfaceTextu
             case 270: return new float[]{pw - y, x};
             default:  return new float[]{x, y};
         }
+    }
+
+    private static Bitmap cropRotateBitmap(byte[] nv21, int w, int h, Rect crop, int rot) {
+        ByteArrayOutputStream bos = new ByteArrayOutputStream();
+        new YuvImage(nv21, ImageFormat.NV21, w, h, null).compressToJpeg(crop, 100, bos);
+        byte[] raw = bos.toByteArray();
+        Bitmap bmp = BitmapFactory.decodeByteArray(raw, 0, raw.length);
+        if (rot == 0) return bmp;
+        Matrix m = new Matrix();
+        m.postRotate(rot);
+        Bitmap rotated = Bitmap.createBitmap(bmp, 0, 0, bmp.getWidth(), bmp.getHeight(), m, true);
+        bmp.recycle();
+        return rotated;
     }
 
     private static byte[] cropRotateJpeg(byte[] nv21, int w, int h, Rect crop, int rot) {
