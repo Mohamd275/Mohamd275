@@ -9,6 +9,7 @@
 | `sketchware/DigitReader.java` | قارئ الأرقام العربية: الرقم الوطني الأحمر وتاريخ الولادة |
 | `sketchware/FieldVoter.java` | بيقرا كذا فريم ويختار القيمة اللي اتكررت (دقة أعلى) |
 | `sketchware/SyrianIdParser.java` | بيطلّع الحقول من النص |
+| `sketchware/OcrSpaceScanner.java` | قراءة بـ OCR.space (اختياري - بس لازم يكون موجود في المشروع) |
 | `sketchware/CloudVisionScanner.java` | قراءة بـ Google Cloud (اختياري - بس لازم يكون موجود في المشروع) |
 | `assets/tessdata/ara.traineddata` | ملف اللغة العربي لـ Tesseract (tessdata_fast، رخصة Apache 2.0) |
 | `optional-egypt/` | النسخة القديمة للبطاقة المصرية - **متضيفهمش** |
@@ -21,11 +22,21 @@
    ```
    وفعّلها للمشروع.
 2. **ملف اللغة:** نزّل `assets/tessdata/ara.traineddata` من الريبو ده، وفي `Asset Manager` اعمل فولدر `tessdata` وحطه جواه.
-3. **ملفات الـ Java (6):** `IdScanActivity` ، `OfflineIdReader` ، `DigitReader` ، `FieldVoter` ، `SyrianIdParser` ، `CloudVisionScanner`
+3. **ملفات الـ Java (7):** `IdScanActivity` ، `OfflineIdReader` ، `DigitReader` ، `FieldVoter` ، `SyrianIdParser` ، `OcrSpaceScanner` ، `CloudVisionScanner`
    (غيّر سطر `package` في كل واحد لو الباكدج مختلف).
 4. `IdScanActivity` متسجلة في AndroidManifest، وكود الزرار زي ما هو.
 
-> للتبديل لـ Google Cloud: في أول `IdScanActivity.java` خلي `USE_OFFLINE = false`.
+## تغيير طريقة القراءة
+في أول `IdScanActivity.java`:
+```java
+public static int ENGINE = ENGINE_OFFLINE;    // على الموبايل - ببلاش ومن غير نت
+public static int ENGINE = ENGINE_OCR_SPACE;  // OCR.space - المفتاح في OcrSpaceScanner.java
+public static int ENGINE = ENGINE_GOOGLE;     // Google Cloud - المفتاح في CloudVisionScanner.java
+```
+(سطر واحد بس منهم.) في وضع OCR.space و Google، الرقم الوطني والتاريخ بيتقروا كمان على الموبايل بقارئ الأرقام للتأكيد.
+
+**مفتاح OCR.space المجاني:** https://ocr.space/ocrapi/freekey ← إيميلك ← المفتاح بيوصل على الإيميل ← حطه في
+`public static String API_KEY = "...";` جوه `OcrSpaceScanner.java`.
 
 ---|---|
 | `sketchware/CloudVisionScanner.java` | يرفع الصورة لـ Cloud Vision ويرجّع النتيجة (**الأساسي**) |

@@ -64,8 +64,12 @@ public class IdScanActivity extends Activity implements TextureView.SurfaceTextu
     }
 
     // ===== إعدادات =====
-    /** true = قراءة أوفلاين (Tesseract، ببلاش ومن غير نت) | false = Google Cloud Vision */
-    public static boolean USE_OFFLINE = true;
+    /** طريقة القراءة:
+     *  ENGINE_OFFLINE   = على الموبايل (ببلاش، من غير نت، من غير مفتاح)
+     *  ENGINE_OCR_SPACE = OCR.space (ببلاش لحد 500 صورة/يوم، محتاج نت ومفتاح في OcrSpaceScanner)
+     *  ENGINE_GOOGLE    = Google Cloud Vision (محتاج نت ومفتاح في CloudVisionScanner) */
+    public static final int ENGINE_OFFLINE = 0, ENGINE_OCR_SPACE = 1, ENGINE_GOOGLE = 2;
+    public static int ENGINE = ENGINE_OFFLINE;
     private static final int MAX_OFFLINE_FRAMES = 8;      // أوفلاين: أقصى عدد فريمات نقراها ونصوّت بينها
     private static final int OFFLINE_SAMPLES_PER_TRY = 3; // أوفلاين: نختار الأوضح من 3 فريمات
     private static final float CARD_RATIO = 85.6f / 54f;  // مقاس البطاقة القياسي
@@ -369,7 +373,7 @@ public class IdScanActivity extends Activity implements TextureView.SurfaceTextu
             }
         }
         samples++;
-        if (samples < (USE_OFFLINE ? OFFLINE_SAMPLES_PER_TRY : SAMPLES_PER_TRY)) {
+        if (samples < (ENGINE == ENGINE_OFFLINE ? OFFLINE_SAMPLES_PER_TRY : SAMPLES_PER_TRY)) {
             handler.postDelayed(sampler, SAMPLE_INTERVAL_MS);
             return;
         }
@@ -381,7 +385,7 @@ public class IdScanActivity extends Activity implements TextureView.SurfaceTextu
     }
 
     private void sendBestFrame() {
-        if (USE_OFFLINE) {
+        if (ENGINE == ENGINE_OFFLINE) {
             readOffline();
             return;
         }
@@ -390,15 +394,25 @@ public class IdScanActivity extends Activity implements TextureView.SurfaceTextu
         overlay.setScanning(false);
         overlay.setHint("جاري قراءة البيانات...", false);
         final byte[] frame = bestFrame;
-        final Rect crop = frameRectInSensor(0.06f);
+        final Rect crop = frameRectInSensor(0.02f);
         final int fw = pw, fh = ph, rot = camRotation;
         bestFrame = null;
 
         new Thread(new Runnable() {
             @Override public void run() {
                 final byte[] jpeg;
+                final String[] local; // {رقم وطني، تاريخ} من قارئ الأرقام على الموبايل
                 try {
-                    jpeg = cropRotateJpeg(frame, fw, fh, crop, rot);
+                    Bitmap card = cropRotateBitmap(frame, fw, fh, crop, rot);
+                    String[] d;
+                    try {
+                        d = OfflineIdReader.readDigits(card);
+                    } catch (Throwable t) {
+                        d = new String[]{"", ""};
+                    }
+                    local = d;
+                    jpeg = toJpeg(card, 1600, 85);
+                    card.recycle();
                 } catch (final Exception e) {
                     runOnUiThread(new Runnable() {
                         @Override public void run() { onScanFailed("خطأ في الصورة"); }
@@ -408,8 +422,9 @@ public class IdScanActivity extends Activity implements TextureView.SurfaceTextu
                 runOnUiThread(new Runnable() {
                     @Override public void run() {
                         if (isFinishing()) return;
-                        CloudVisionScanner.scanJpeg(IdScanActivity.this, jpeg, new CloudVisionScanner.Callback() {
+                        CloudVisionScanner.Callback cb = new CloudVisionScanner.Callback() {
                             @Override public void onResult(SyrianIdParser.Result r, String raw) {
+                                applyLocalDigits(r, local);
                                 if (r.isValid()) onScanSuccess(r);
                                 else onScanFailed(null);
                             }
@@ -417,11 +432,39 @@ public class IdScanActivity extends Activity implements TextureView.SurfaceTextu
                                 state = ST_PAUSED;
                                 overlay.setHint("خطأ: " + msg + "\nاضغط على الشاشة للمحاولة تاني", true);
                             }
-                        });
+                        };
+                        if (ENGINE == ENGINE_OCR_SPACE) OcrSpaceScanner.scanJpeg(IdScanActivity.this, jpeg, cb);
+                        else CloudVisionScanner.scanJpeg(IdScanActivity.this, jpeg, cb);
                     }
                 });
             }
         }).start();
+    }
+
+    /**
+     * الرقم الوطني والتاريخ من قارئ الأرقام المحلي (دقيق جداً في الأرقام العربية).
+     * مع OCR.space بنقدّم المحلي، ومع Google بنستخدمه بس لو Google مجابش حاجة.
+     */
+    private static void applyLocalDigits(SyrianIdParser.Result r, String[] local) {
+        boolean preferLocal = ENGINE == ENGINE_OCR_SPACE;
+        if (!local[0].isEmpty() && (preferLocal || r.nationalId.length() != SyrianIdParser.NATIONAL_ID_LENGTH)) {
+            r.nationalId = local[0];
+        }
+        if (!local[1].isEmpty() && (preferLocal || r.birthDate.isEmpty())) {
+            r.birthDate = local[1];
+        }
+    }
+
+    private static byte[] toJpeg(Bitmap src, int maxWidth, int quality) {
+        Bitmap b = src;
+        if (src.getWidth() > maxWidth) {
+            int h = Math.round(src.getHeight() * (maxWidth / (float) src.getWidth()));
+            b = Bitmap.createScaledBitmap(src, maxWidth, h, true);
+        }
+        ByteArrayOutputStream out = new ByteArrayOutputStream();
+        b.compress(Bitmap.CompressFormat.JPEG, quality, out);
+        if (b != src) b.recycle();
+        return out.toByteArray();
     }
 
     // ---------------------------------------------------------------- offline
@@ -560,22 +603,6 @@ public class IdScanActivity extends Activity implements TextureView.SurfaceTextu
         Bitmap rotated = Bitmap.createBitmap(bmp, 0, 0, bmp.getWidth(), bmp.getHeight(), m, true);
         bmp.recycle();
         return rotated;
-    }
-
-    private static byte[] cropRotateJpeg(byte[] nv21, int w, int h, Rect crop, int rot) {
-        ByteArrayOutputStream bos = new ByteArrayOutputStream();
-        new YuvImage(nv21, ImageFormat.NV21, w, h, null).compressToJpeg(crop, 95, bos);
-        if (rot == 0) return bos.toByteArray();
-        byte[] raw = bos.toByteArray();
-        Bitmap bmp = BitmapFactory.decodeByteArray(raw, 0, raw.length);
-        Matrix m = new Matrix();
-        m.postRotate(rot);
-        Bitmap rotated = Bitmap.createBitmap(bmp, 0, 0, bmp.getWidth(), bmp.getHeight(), m, true);
-        bmp.recycle();
-        ByteArrayOutputStream out = new ByteArrayOutputStream();
-        rotated.compress(Bitmap.CompressFormat.JPEG, 92, out);
-        rotated.recycle();
-        return out.toByteArray();
     }
 
     private static int clamp(int v, int lo, int hi) { return Math.max(lo, Math.min(hi, v)); }

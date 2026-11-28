@@ -79,6 +79,31 @@ public class OfflineIdReader {
         return r;
     }
 
+    private static DigitReader sDigits;
+
+    private static synchronized DigitReader digitReader() {
+        if (sDigits == null) sDigits = new DigitReader(buildTemplates());
+        return sDigits;
+    }
+
+    /**
+     * يقرا الرقم الوطني وتاريخ الولادة بس بقارئ الأرقام (من غير Tesseract).
+     * بيستخدمه وضع OCR.space و Google Cloud كتأكيد. يرجّع {رقم وطني، تاريخ} (ممكن يبقوا فاضيين).
+     */
+    public static String[] readDigits(Bitmap cardSrc) {
+        DigitReader d = digitReader();
+        Bitmap card = scaleToWidth(cardSrc, CARD_WIDTH, false);
+        Bitmap f = crop(card, ZONE_FIELDS);
+        String date = d.readBirthDate(pixels(f), f.getWidth(), f.getHeight());
+        f.recycle();
+        Bitmap n = crop(card, ZONE_NUMBER);
+        String num = d.readRedNumber(pixels(n), n.getWidth(), n.getHeight());
+        n.recycle();
+        if (card != cardSrc) card.recycle();
+        if (num.length() != SyrianIdParser.NATIONAL_ID_LENGTH) num = "";
+        return new String[]{num, date};
+    }
+
     public void release() {
         if (tess != null) {
             tess.recycle();
@@ -99,7 +124,7 @@ public class OfflineIdReader {
     // ---------------------------------------------------------------- init
 
     private void ensureInit() throws Exception {
-        if (digits == null) digits = new DigitReader(buildTemplates());
+        if (digits == null) digits = digitReader();
         if (tess != null) return;
         String dataPath = copyTessData();
         TessBaseAPI t = new TessBaseAPI();
